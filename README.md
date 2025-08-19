@@ -4,6 +4,9 @@
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Render-blue?style=for-the-badge)](https://flavor-ai-gt92.onrender.com)
 
+🔗 **Live Demo:** [https://flavor-ai-gt92.onrender.com](https://flavor-ai-gt92.onrender.com)
+
+
 ---
 
 # **Flavor AI**
