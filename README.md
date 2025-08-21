@@ -2,7 +2,6 @@
 
 ![GSSoC'25](https://img.shields.io/badge/GirlScript%20Summer%20of%20Code-2025-orange?style=for-the-badge)
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Render-blue?style=for-the-badge)](https://flavor-ai-gt92.onrender.com)
 
 ---
 
