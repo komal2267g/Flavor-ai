@@ -7,10 +7,10 @@ import { SearchIcon, X } from "@/components/Icons";
 const RecipeSearchBar = ({
   isScrolled,
   handleSearchFocus,
-  handleBlur,
   showResults,
   setShowResults,
   className,
+  handleBlur: parentHandleBlur,
 }) => {
   const [input, setInput] = useState("");
   const [meals, setMeals] = useState([]);
@@ -21,6 +21,20 @@ const RecipeSearchBar = ({
   const [dropdownBgColor, setDropdownBgColor] = useState('rgb(55, 65, 81)'); // dark gray
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [currentTheme, setCurrentTheme] = useState('dark');
+
+  const handleBlur = () => {
+  setIsSearchOpen(false);
+  setShowResults(false);
+  setActiveIndex(-1);
+  setHoveredIndex(null);
+  setMeals([]);
+  inputRef.current?.blur();
+  if (parentHandleBlur) {
+    parentHandleBlur();
+  }
+};
+
+
 
   // Monitor theme changes
   useEffect(() => {
@@ -109,9 +123,7 @@ const RecipeSearchBar = ({
     } else if (event.key === "Enter" && activeIndex >= 0) {
       window.location.href = `/meal/${meals[activeIndex].idMeal}`;
     } else if (event.key === "Escape") {
-      setShowResults(false);
-      setIsSearchOpen(false);
-      inputRef.current.blur();
+      handleBlur();
     }
   };
 
@@ -136,7 +148,6 @@ const RecipeSearchBar = ({
 
   const handleClickOutside = (e) => {
     if (!e.target.closest('#searchBar')) {
-      setIsSearchOpen(false);
       handleBlur();
     }
   };
