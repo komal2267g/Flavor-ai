@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
+import BackButton from "@/components/BackButton"; 
 
 export default function DietPlannerPage() {
   const [formData, setFormData] = useState({
@@ -85,7 +86,10 @@ export default function DietPlannerPage() {
   };
 
   return (
-    <div className="min-h-screen bg-base-100">
+    <div className="min-h-screen bg-base-100 relative">
+      {/* Back Button */}
+      <BackButton fallbackUrl="/" />
+      
       {/* Navigation */}
       <Navbar
         showResults={showResults}
@@ -95,7 +99,7 @@ export default function DietPlannerPage() {
       />
 
       <div className="container mx-auto md:mt-16 mt-28 px-4 py-8">
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 mt-12 md:mt-0">
           <h1 className="text-4xl font-bold text-primary mb-4">
             🥗 AI Diet Planner
           </h1>
