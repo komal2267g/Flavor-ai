@@ -7,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import BackButton from "@/components/BackButton"; 
 
 export default function DietPlannerPage() {
+  const [isVegetarian, setIsVegetarian] = useState(false);
   const [formData, setFormData] = useState({
     height: "",
     weight: "",
@@ -14,6 +15,7 @@ export default function DietPlannerPage() {
     gender: "",
     activityLevel: "",
     goal: "",
+    dietPreference:"",
     bloodSugar: "",
     bloodPressure: "",
     dietaryRestrictions: [],
@@ -114,24 +116,41 @@ export default function DietPlannerPage() {
             <div className="card-body">
               <h2 className="card-title text-2xl mb-4">Your Health Profile</h2>
 
-              {/* API Toggle */}
-              <div className="form-control">
-                <label className="label cursor-pointer">
-                  <span className="label-text">Use Test API (for demo)</span>
-                  <input
-                    type="checkbox"
-                    checked={useTestAPI}
-                    onChange={(e) => setUseTestAPI(e.target.checked)}
-                    className="toggle toggle-primary"
-                  />
-                </label>
-                <div className="label">
-                  <span className="label-text-alt">
-                    {useTestAPI ? "Using mock data for testing" : "Using AI-powered diet planner"}
-                  </span>
-                </div>
-              </div>
+{/* API Toggle */}
+<div className="form-control">
+  <label className="label cursor-pointer">
+    <span className="label-text">Use Test API (for demo)</span>
+    <input
+      type="checkbox"
+      checked={useTestAPI}
+      onChange={(e) => setUseTestAPI(e.target.checked)}
+      className="toggle toggle-primary"
+    />
+  </label>
+  <div className="label">
+    <span className="label-text-alt">
+      {useTestAPI ? "Using mock data for testing" : "Using AI-powered diet planner"}
+    </span>
+  </div>
+</div>
 
+{/* Vegetarian Toggle */}
+<div className="form-control">
+  <label className="label cursor-pointer">
+    <span className="label-text">Vegetarian Mode</span>
+    <input
+      type="checkbox"
+      checked={isVegetarian}
+      onChange={(e) => setIsVegetarian(e.target.checked)}
+      className="toggle toggle-success"
+    />
+  </label>
+  <div className="label">
+    <span className="label-text-alt">
+      {isVegetarian ? "Showing only vegetarian dishes" : "Showing all dishes"}
+    </span>
+  </div>
+</div>     
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Basic Info */}
                 <div className="grid grid-cols-2 gap-4">
@@ -237,7 +256,32 @@ export default function DietPlannerPage() {
                     <option value="general_health">General Health</option>
                   </select>
                 </div>
-
+                {/* Diet Preference Dropdown (added above Dietary Restrictions) */}
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">Diet Preference</span>
+                  </label>
+                  <select
+                    className="select select-bordered"
+                    value={formData.dietPreference || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        dietPreference: e.target.value,
+                      })
+                    }
+                  >
+                    <option value="" disabled>
+                      Select your diet preference
+                    </option>
+                    <option value="Vegetarian">Vegetarian</option>
+                    <option value="Non-Vegetarian">Non-Vegetarian</option>
+                    <option value="Eggetarian">Eggetarian</option>
+                    <option value="Vegan">Vegan</option>
+                  </select>
+                  <div className="label">
+                  </div>
+                </div>
                 {/* Health Conditions */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="form-control">
