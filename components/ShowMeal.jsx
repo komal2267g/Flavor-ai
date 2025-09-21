@@ -1,23 +1,57 @@
+// components/ShowMeal.jsx
 "use client";
 
-import BackButton from "@/components/BackButton";
-import { PlusIcon, YoutubeIcon } from "@/components/Icons";
-import { PlayIcon, PauseIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
-import Link from "next/link";
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
-import Footer from "./Footer";
+import Link from "next/link";
+
 import Navbar from "./Navbar";
+import Footer from "./Footer";
+import BackButton from "@/components/BackButton";
+import ShareButton from "@/components/ShareButton";
+import { PlusIcon, YoutubeIcon } from "@/components/Icons";
+import { PlayIcon, PauseIcon, ArrowPathIcon } from "@heroicons/react/24/solid";
 
-// --- Self-contained helper components ---
+// Shopping list helpers
+import { addItemsToShoppingList, parseMeasure } from "@/lib/shoppingList";
+
+// Unit system (metric/us)
+import useUnitSystem from "@/hooks/useUnitSystem";
+import UnitToggle from "@/components/UnitToggle";
+import { formatMeasureForSystem } from "@/lib/units";
+
+// Servings scaler
+import { useServings } from "@/hooks/useServings";
+import ServingSizeControl from "@/components/ServingSizeControl";
+
+/* ---------------- Small helpers ---------------- */
+
 function HighlightedSentence({ text, isActive, wordRange }) {
-  if (!isActive || !wordRange) {
-    return <span>{text}</span>;
-  }
-
+  if (!isActive || !wordRange) return <span>{text}</span>;
   const { startChar, endChar } = wordRange;
   const before = text.substring(0, startChar);
   const highlighted = text.substring(startChar, endChar);
   const after = text.substring(endChar);
+  return (
+    <span>
+      {before}
+      <span className="speaking-word">{highlighted}</span>
+      {after}
+    </span>
+  );
+}
+
+function HighlightedIngredient({ text, temp, isActive, wordRange }) {
+  if (!isActive || !wordRange) return <span>{text}</span>;
+  const { startChar, endChar } = wordRange;
+  const cellEndPos = temp + text.length;
+  if (endChar <= temp || startChar >= cellEndPos) return <span>{text}</span>;
+
+  const localStartChar = Math.max(0, startChar - temp);
+  const localEndChar = Math.min(text.length, endChar - temp);
+
+  const before = text.substring(0, localStartChar);
+  const highlighted = text.substring(localStartChar, localEndChar);
+  const after = text.substring(localEndChar);
 
   return (
     <span>
@@ -28,82 +62,156 @@ function HighlightedSentence({ text, isActive, wordRange }) {
   );
 }
 
-function IngredientsTable({ mealData }) {
+/* ----- helpers for quantity text handling ----- */
+const round1 = (n) => Math.round(n * 10) / 10;
+
+/** Return text after the leading numeric qty (e.g. "tbs", "chopped", "g sugar") */
+function tailAfterQty(raw) {
+  const m = String(raw || "")
+    .trim()
+    .match(/^\s*([0-9]+(?:\.[0-9]+)?(?:\s*\/\s*[0-9]+)?)\s*(.*)$/i);
+  return m ? (m[2] || "").trim() : "";
+}
+
+/* ---------------- Ingredients table ---------------- */
+
+function IngredientsTable({ mealData, activeIngRange, unitSystem, factor = 1 }) {
   const ingredients = useMemo(
     () =>
       Object.keys(mealData)
         .map((key) => {
           if (key.startsWith("strIngredient") && mealData[key]) {
             const num = key.slice(13);
-            if (mealData[`strMeasure${num}`])
-              return {
-                measure: mealData[`strMeasure${num}`],
-                name: mealData[key],
-              };
+            const measure = mealData[`strMeasure${num}`];
+            if (measure) return { measure, name: mealData[key] };
           }
           return null;
         })
         .filter(Boolean),
     [mealData]
   );
+
   return (
-    <div className="overflow-x-auto mt-2">
+    <div className="overflow-x-auto mt-3">
       <table className="table w-full">
         <thead>
           <tr className="text-left">
-            <th className="p-2 w-1/3 text-sm font-semibold text-primary">
-              Quantity
-            </th>
-            <th className="p-2 text-sm font-semibold text-primary">
-              Ingredient
-            </th>
+            <th className="p-2 w-1/3 text-sm font-semibold text-primary">Quantity</th>
+            <th className="p-2 text-sm font-semibold text-primary">Ingredient</th>
           </tr>
         </thead>
         <tbody>
-          {ingredients.map((ing, i) => (
-            <tr key={i} className="border-t border-base-300 hover:bg-base-200">
-              <td className="p-2 font-medium text-secondary">{ing.measure}</td>
-              <td className="p-2 text-base-content">{ing.name}</td>
-            </tr>
-          ))}
+          {ingredients.map((ing, i) => {
+            const raw = (ing.measure || "").trim();
+            let displayMeasure = raw;
+
+            try {
+              const parsed = parseMeasure(raw); // { qty, unit } when recognized
+              if (parsed && Number.isFinite(parsed.qty)) {
+                const scaledQty = parsed.qty * factor;
+                const pretty = scaledQty >= 10 ? Math.round(scaledQty) : round1(scaledQty);
+
+                // keep whatever appears after the number (unit and descriptors)
+                const tail = tailAfterQty(raw);
+
+                let candidate;
+                if (parsed.unit) {
+                  // avoid duplicating the unit when tail starts with it
+                  const rx = new RegExp(`^${parsed.unit}\\b`, "i");
+                  const extra = tail.replace(rx, "").trim();
+                  candidate = `${pretty} ${parsed.unit}${extra ? ` ${extra}` : ""}`;
+                } else {
+                  // unit wasn't recognized (e.g., "tbs", "chopped") — keep it
+                  candidate = tail ? `${pretty} ${tail}` : String(pretty);
+                }
+
+                const converted = formatMeasureForSystem(candidate, unitSystem);
+                displayMeasure = converted || candidate;
+              } else {
+                // not parseable; still allow converter to normalize units text
+                displayMeasure = formatMeasureForSystem(raw, unitSystem) || raw;
+              }
+            } catch {
+              displayMeasure = formatMeasureForSystem(raw, unitSystem) || raw;
+            }
+
+            return (
+              <tr key={i} className="border-t border-base-300 hover:bg-base-200">
+                <td className="p-2 font-medium text-secondary tabular-nums text-left whitespace-nowrap">
+                  <HighlightedIngredient
+                    text={displayMeasure}
+                    temp={0}
+                    isActive={i === activeIngRange.sentenceIndex}
+                    wordRange={activeIngRange}
+                  />
+                </td>
+                <td className="p-2 text-base-content">
+                  <HighlightedIngredient
+                    text={ing.name}
+                    temp={displayMeasure.length + 1}
+                    isActive={i === activeIngRange.sentenceIndex}
+                    wordRange={activeIngRange}
+                  />
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
 }
 
-// --- The Main Page Component ---
+/* ===================== Main ===================== */
+
 function ShowMeal({ URL }) {
   const [mealData, setMealData] = useState(null);
   const [favorites, setFavorites] = useState([]);
+  const [showResults, setShowResults] = useState(false);
+
+  const handleSearchFocus = () => setShowResults(true);
+  const handleBlur = () => setTimeout(() => setShowResults(false), 200);
 
   useEffect(() => {
-    const storedFavorites = localStorage.getItem("favorites");
-    if (storedFavorites) {
-      setFavorites(JSON.parse(storedFavorites));
-    }
+    const stored = localStorage.getItem("favorites");
+    if (stored) setFavorites(JSON.parse(stored));
   }, []);
 
   const toggleFavorite = (meal) => {
-    let updatedFavorites = [];
-    if (favorites.some((f) => f.idMeal === meal.idMeal)) {
-      updatedFavorites = favorites.filter((f) => f.idMeal !== meal.idMeal);
-    } else {
-      updatedFavorites = [...favorites, meal];
-    }
-    setFavorites(updatedFavorites);
-    localStorage.setItem("favorites", JSON.stringify(updatedFavorites));
+    const exists = favorites.some((f) => f.idMeal === meal.idMeal);
+    const updated = exists
+      ? favorites.filter((f) => f.idMeal !== meal.idMeal)
+      : [...favorites, meal];
+    setFavorites(updated);
+    localStorage.setItem("favorites", JSON.stringify(updated));
   };
 
   const isFavorite = (idMeal) => favorites.some((f) => f.idMeal === idMeal);
 
-  // --- Instruction TTS ---
+  /* ---------- Instruction TTS ---------- */
   const [playerState, setPlayerState] = useState("idle");
   const [activeWordRange, setActiveWordRange] = useState({
     sentenceIndex: -1,
     startChar: -1,
     endChar: -1,
   });
+  const [ingredientPlayerState, setIngredientPlayerState] = useState("idle");
+  const [activeIngRange, setActiveIngRange] = useState({
+    sentenceIndex: -1,
+    startChar: -1,
+    endChar: -1,
+  });
+
+  // unit system preference
+  const [unitSystem, setUnitSystem] = useUnitSystem();
+
+  // serving size scaler (baseline 2 if you don’t have a better one)
+  const baseServings = 2;
+  const { servings, setServings, factor, reset } = useServings(
+    mealData?.idMeal || "pending",
+    baseServings
+  );
+
   const utterances = useRef([]);
 
   const instructionSentences = useMemo(() => {
@@ -115,18 +223,18 @@ function ShowMeal({ URL }) {
   }, [mealData]);
 
   const allergenKeywords = [
-    "milk", "cheese", "butter", "cream", "egg", "peanut", "almond", "cashew", "walnut", "pecan", "hazelnut", "wheat", "barley", "rye", "soy", "soybean", "shrimp", "prawn", "crab", "lobster", "clam", "mussel", "oyster", "fish"
+    "milk","cheese","butter","cream","egg",
+    "peanut","almond","cashew","walnut","pecan","hazelnut",
+    "wheat","barley","rye","soy","soybean",
+    "shrimp","prawn","crab","lobster","clam","mussel","oyster","fish",
   ];
 
   const detectedAllergens = useMemo(() => {
     if (!mealData) return [];
     const ingredients = Object.keys(mealData)
-      .filter(k => k.startsWith("strIngredient") && mealData[k])
-      .map(k => mealData[k].toLowerCase());
-
-    return allergenKeywords.filter(allergen =>
-      ingredients.some(ing => ing.includes(allergen))
-    );
+      .filter((k) => k.startsWith("strIngredient") && mealData[k])
+      .map((k) => mealData[k].toLowerCase());
+    return allergenKeywords.filter((a) => ingredients.some((ing) => ing.includes(a)));
   }, [mealData]);
 
   useEffect(() => {
@@ -137,7 +245,6 @@ function ShowMeal({ URL }) {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "en-US";
       utterance.rate = 1;
-
       utterance.onboundary = (event) => {
         if (event.name === "word") {
           setActiveWordRange({
@@ -147,7 +254,6 @@ function ShowMeal({ URL }) {
           });
         }
       };
-
       utterance.onend = () => {
         if (sentenceIndex === instructionSentences.length - 1) {
           setPlayerState("idle");
@@ -162,28 +268,42 @@ function ShowMeal({ URL }) {
 
   const handlePlay = useCallback(() => {
     const synth = window.speechSynthesis;
-    if (playerState === "paused") {
-      synth.resume();
-    } else {
-      utterances.current.forEach((utterance) => synth.speak(utterance));
+
+    if (ingredientPlayerState === "playing" || ingredientPlayerState === "paused") {
+      synth.cancel();
+      setIngredientPlayerState("idle");
+      setActiveIngRange({ sentenceIndex: -1, startChar: -1, endChar: -1 });
     }
+
+    if (playerState === "paused") synth.resume();
+    else utterances.current.forEach((utt) => synth.speak(utt));
+
     setPlayerState("playing");
-  }, [playerState]);
+  }, [playerState, ingredientPlayerState]);
 
   const handlePause = useCallback(() => {
-    window.speechSynthesis.pause();
-    setPlayerState("paused");
-  }, []);
+    if (playerState === "playing") {
+      window.speechSynthesis.pause();
+      setPlayerState("paused");
+    }
+  }, [playerState]);
 
   const handleRestart = useCallback(() => {
-    window.speechSynthesis.cancel();
-    setPlayerState("idle");
-    setTimeout(() => {
-      handlePlay();
-    }, 100);
-  }, [handlePlay]);
+    const synth = window.speechSynthesis;
 
-  // --- Ingredient TTS ---
+    if (ingredientPlayerState !== "idle") {
+      synth.cancel();
+      setIngredientPlayerState("idle");
+      setActiveIngRange({ sentenceIndex: -1, startChar: -1, endChar: -1 });
+    }
+
+    synth.cancel();
+    setPlayerState("idle");
+    setTimeout(() => handlePlay(), 100);
+  }, [handlePlay, ingredientPlayerState]);
+
+  /* ---------- Ingredient TTS + Copy ---------- */
+
   const ingredientSentences = useMemo(() => {
     if (!mealData) return [];
     return Object.keys(mealData)
@@ -198,7 +318,24 @@ function ShowMeal({ URL }) {
       .filter(Boolean);
   }, [mealData]);
 
-  const [ingredientPlayerState, setIngredientPlayerState] = useState("idle");
+  const ingredientsCopyText = useMemo(
+    () => ingredientSentences.join("\n"),
+    [ingredientSentences]
+  );
+
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyIngredients = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(ingredientsCopyText);
+      setCopied(true);
+    } catch {
+      // ignore
+    } finally {
+      setTimeout(() => setCopied(false), 1200);
+    }
+  }, [ingredientsCopyText]);
+
   const ingredientUtterances = useRef([]);
 
   useEffect(() => {
@@ -209,9 +346,19 @@ function ShowMeal({ URL }) {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "en-US";
       utterance.rate = 1;
+      utterance.onboundary = (event) => {
+        if (event.name === "word") {
+          setActiveIngRange({
+            sentenceIndex: index,
+            startChar: event.charIndex,
+            endChar: event.charIndex + event.charLength,
+          });
+        }
+      };
       utterance.onend = () => {
         if (index === ingredientSentences.length - 1) {
           setIngredientPlayerState("idle");
+          setActiveIngRange({ sentenceIndex: -1, startChar: -1, endChar: -1 });
         }
       };
       return utterance;
@@ -222,40 +369,130 @@ function ShowMeal({ URL }) {
 
   const handleIngredientPlay = useCallback(() => {
     const synth = window.speechSynthesis;
-    if (ingredientPlayerState === "paused") {
-      synth.resume();
-    } else {
-      ingredientUtterances.current.forEach((utt) => synth.speak(utt));
+
+    if (playerState === "playing" || playerState === "paused") {
+      synth.cancel();
+      setPlayerState("idle");
+      setActiveWordRange({ sentenceIndex: -1, startChar: -1, endChar: -1 });
     }
+
+    if (ingredientPlayerState === "paused") synth.resume();
+    else ingredientUtterances.current.forEach((utt) => synth.speak(utt));
+
     setIngredientPlayerState("playing");
-  }, [ingredientPlayerState]);
+  }, [ingredientPlayerState, playerState]);
 
   const handleIngredientPause = useCallback(() => {
-    window.speechSynthesis.pause();
-    setIngredientPlayerState("paused");
-  }, []);
+    if (ingredientPlayerState === "playing") {
+      window.speechSynthesis.pause();
+      setIngredientPlayerState("paused");
+    }
+  }, [ingredientPlayerState]);
 
   const handleIngredientRestart = useCallback(() => {
-    window.speechSynthesis.cancel();
-    setIngredientPlayerState("idle");
-    setTimeout(() => {
-      handleIngredientPlay();
-    }, 100);
-  }, [handleIngredientPlay]);
+    const synth = window.speechSynthesis;
 
-  // --- Fetch Meal ---
+    if (playerState !== "idle") {
+      synth.cancel();
+      setPlayerState("idle");
+      setActiveWordRange({ sentenceIndex: -1, startChar: -1, endChar: -1 });
+    }
+
+    synth.cancel();
+    setIngredientPlayerState("idle");
+    setTimeout(() => handleIngredientPlay(), 100);
+  }, [handleIngredientPlay, playerState]);
+
+  // shopping list
+  const [addedToList, setAddedToList] = useState(false);
+
+  const buildShoppingItems = useCallback(() => {
+    if (!mealData) return [];
+    const out = [];
+    for (let n = 1; n <= 20; n++) {
+      const name = mealData[`strIngredient${n}`];
+      const measure = mealData[`strMeasure${n}`];
+      if (!name || !name.trim()) continue;
+      const { qty, unit } = parseMeasure(measure || "");
+      out.push({ name: name.trim(), qty, unit });
+    }
+    return out;
+  }, [mealData]);
+
+  const handleAddToShopping = useCallback(() => {
+    const items = buildShoppingItems();
+    if (items.length) {
+      addItemsToShoppingList(items);
+      setAddedToList(true);
+      setTimeout(() => setAddedToList(false), 1200);
+    }
+  }, [buildShoppingItems]);
+
+  // Fetch Meal + Save to recentMeals
   useEffect(() => {
+    let alive = true;
+
     fetch(URL)
-      .then((res) => res.json())
-      .then((data) => setMealData(data.meals[0]))
-      .catch((error) => console.error("Error fetching data:", error));
+      .then((r) => r.json())
+      .then((data) => {
+        const meal = data?.meals?.[0];
+        if (!alive || !meal) return;
+
+        setMealData(meal);
+
+        if (typeof window === "undefined") return;
+        try {
+          const mealInfo = {
+            idMeal: meal.idMeal,
+            strMeal: meal.strMeal,
+            strMealThumb: meal.strMealThumb,
+          };
+
+          const raw = localStorage.getItem("recentMeals");
+          const prev = raw ? JSON.parse(raw) : [];
+          const list = Array.isArray(prev) ? prev : [];
+
+          const updated = [
+            mealInfo,
+            ...list.filter((m) => m.idMeal !== meal.idMeal),
+          ].slice(0, 5);
+
+          localStorage.setItem("recentMeals", JSON.stringify(updated));
+        } catch {
+          localStorage.setItem(
+            "recentMeals",
+            JSON.stringify([
+              {
+                idMeal: meal.idMeal,
+                strMeal: meal.strMeal,
+                strMealThumb: meal.strMealThumb,
+              },
+            ])
+          );
+        }
+      })
+      .catch((e) => console.error("Error fetching data:", e));
+
+    return () => {
+      alive = false;
+    };
   }, [URL]);
 
+  /* ---------- Loading ---------- */
   if (!mealData) {
     return (
       <>
-        <Navbar />
-        <div className="min-h-screen mt-20 flex bg-base-100 justify-center items-center p-4">
+        <Navbar
+          showResults={showResults}
+          setShowResults={setShowResults}
+          handleSearchFocus={handleSearchFocus}
+          handleBlur={handleBlur}
+        />
+        <div
+          className={`min-h-screen mt-20 flex bg-base-100 justify-center items-center p-4 transition-all duration-300 ${
+            showResults ? "opacity-80 blur-sm" : "opacity-100"
+          }`}
+        >
           <div className="max-w-4xl w-full p-12 my-6 skeleton bg-base-200 rounded-xl shadow-md">
             <div className="animate-pulse">
               <div className="h-10 bg-base-300 rounded-md w-60 mx-auto mb-4"></div>
@@ -282,31 +519,67 @@ function ShowMeal({ URL }) {
     );
   }
 
+  /* ---------- Render ---------- */
   return (
     <>
-      <Navbar />
-      <div className="min-h-screen py-10 px-4 mt-20 bg-base-100 flex justify-center items-start">
+      <Navbar
+        showResults={showResults}
+        setShowResults={setShowResults}
+        handleSearchFocus={handleSearchFocus}
+        handleBlur={handleBlur}
+      />
+
+      <div
+        className={`min-h-screen py-10 px-4 mt-20 bg-base-100 flex justify-center items-start transition-all duration-300 ${
+          showResults ? "opacity-80 blur-sm" : "opacity-100"
+        }`}
+      >
         <BackButton />
         <div className="relative max-w-4xl w-full bg-base-200 shadow-xl rounded-xl">
-          <div className="p-6 md:p-12">
+          <div className="p-6 md:p-12 print-area">
             <header className="relative text-center mb-8">
-              <button
-                onClick={() => toggleFavorite({
-                  idMeal: mealData.idMeal,
-                  strMeal: mealData.strMeal,
-                  strMealThumb: mealData.strMealThumb
-                })}
-                className="absolute top-0 right-0 bg-black text-white rounded-full p-2 text-lg hover:bg-black hover:text-black transition"
-                aria-label="Toggle favorite"
-              >
-                {isFavorite(mealData.idMeal) ? "💖" : "🤍"}
-              </button>
+              <div className="absolute top-0 right-0 flex items-center gap-2">
+                <Link
+                  href="/shopping-list"
+                  aria-label="Open shopping list"
+                  className="btn btn-ghost btn-circle"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 12.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                  </svg>
+                </Link>
+
+                <button
+                  onClick={() =>
+                    toggleFavorite({
+                      idMeal: mealData.idMeal,
+                      strMeal: mealData.strMeal,
+                      strMealThumb: mealData.strMealThumb,
+                    })
+                  }
+                  className="btn btn-ghost btn-circle text-lg w-[40px] h-[40px]"
+                  aria-label="Toggle favorite"
+                >
+                  {isFavorite(mealData.idMeal) ? "💖" : "🤍"}
+                </button>
+              </div>
+
               <h1 className="text-3xl md:text-5xl font-bold text-base-content">
                 {mealData.strMeal}
               </h1>
-              <p className="text-lg text-primary mt-2">
-                {mealData.strArea} Cuisine
-              </p>
+              <p className="text-lg text-primary mt-2">{mealData.strArea} Cuisine</p>
+
               {detectedAllergens.length > 0 && (
                 <div className="flex flex-wrap justify-center gap-2 mt-2">
                   {detectedAllergens.map((allergen) => (
@@ -317,17 +590,19 @@ function ShowMeal({ URL }) {
                 </div>
               )}
             </header>
+
             <div className="flex flex-col md:flex-row gap-8 md:gap-12 mb-12">
+              {/* LEFT: image + badges + steps */}
               <div className="md:w-1/2">
                 <img
                   src={mealData.strMealThumb}
                   alt={mealData.strMeal}
                   className="w-full h-auto rounded-lg shadow-md mb-4"
                 />
-                <div className="flex items-center gap-4">
-                  <span className="badge badge-lg badge-accent">
-                    {mealData.strCategory}
-                  </span>
+
+                <div className="flex flex-wrap items-center gap-4 no-print">
+                  <span className="badge badge-lg badge-accent">{mealData.strCategory}</span>
+
                   {mealData.strYoutube && (
                     <Link
                       href={mealData.strYoutube}
@@ -338,14 +613,129 @@ function ShowMeal({ URL }) {
                       <YoutubeIcon /> Watch
                     </Link>
                   )}
+
+                  <ShareButton title={mealData.strMeal} />
+
+                  <button
+                    onClick={() => window.print()}
+                    aria-label="Print or save recipe"
+                    className="btn btn-primary btn-sm gap-2"
+                    type="button"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M6 9V2h12v7" />
+                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                      <path d="M6 14h12v8H6z" />
+                    </svg>
+                    Print
+                  </button>
                 </div>
-              </div>
-              <div className="md:w-1/2">
-                <h2 className="text-2xl font-bold mb-2 flex items-center justify-between text-base-content">
-                  <div className="flex items-center">
-                    <PlusIcon />
-                    <span className="ml-2">Ingredients</span>
+
+                {/* Steps */}
+                <section id="instructions-section" className="mt-10">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold text-base-content">Preparation Steps</h2>
+                    <div className="flex items-center gap-2 p-1 border border-base-300 rounded-full bg-base-200">
+                      <button
+                        onClick={playerState === "playing" ? handlePause : handlePlay}
+                        className="btn btn-ghost btn-circle"
+                      >
+                        {playerState === "playing" ? (
+                          <PauseIcon className="h-6 w-6 text-info" />
+                        ) : (
+                          <PlayIcon className="h-6 w-6 text-success" />
+                        )}
+                      </button>
+                      <button
+                        onClick={handleRestart}
+                        className="btn btn-ghost btn-circle"
+                        disabled={playerState === "idle"}
+                      >
+                        <ArrowPathIcon className="h-5 w-5 text-base-content/60" />
+                      </button>
+                    </div>
                   </div>
+
+                  <ol className="list-decimal list-inside space-y-4 text-base-content leading-relaxed">
+                    {instructionSentences.map((sentence, index) => (
+                      <li key={index}>
+                        <HighlightedSentence
+                          text={sentence}
+                          isActive={index === activeWordRange.sentenceIndex}
+                          wordRange={activeWordRange}
+                        />
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              </div>
+
+              {/* RIGHT: Ingredients */}
+              <div className="md:w-1/2 md:self-start md:sticky md:top-24 md:max-h-[calc(100vh-8rem)] md:overflow-auto md:z-[1]">
+                {/* Heading */}
+                <div className="mb-1">
+                  <h2 className="text-2xl font-bold text-base-content flex items-center gap-2">
+                    <PlusIcon />
+                    <span>Ingredients</span>
+                  </h2>
+                </div>
+
+                {/* Row: Servings (left)  •  Unit toggle (right) */}
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <ServingSizeControl
+                    servings={servings}
+                    setServings={setServings}
+                    baseServings={baseServings}
+                    onReset={reset}
+                  />
+                  <UnitToggle value={unitSystem} onChange={setUnitSystem} />
+                </div>
+
+                {/* Row: Add/Copy (left) • TTS controls (right) */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleAddToShopping}
+                      aria-label="Add all ingredients to shopping list"
+                      className="btn btn-primary btn-xs"
+                      type="button"
+                    >
+                      {addedToList ? "Added!" : "Add to list"}
+                    </button>
+
+                    <button
+                      onClick={handleCopyIngredients}
+                      aria-label="Copy ingredients"
+                      className="btn btn-ghost btn-xs tooltip"
+                      data-tip={copied ? "Copied!" : "Copy list"}
+                      type="button"
+                    >
+                      {!copied ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                      )}
+                    </button>
+
+                    <Link href="/shopping-list" className="link link-primary link-hover text-xs sm:hidden">
+                      Open list
+                    </Link>
+                  </div>
+
                   <div className="flex items-center gap-2 p-1 border border-base-300 rounded-full bg-base-200">
                     <button
                       onClick={
@@ -369,55 +759,25 @@ function ShowMeal({ URL }) {
                       <ArrowPathIcon className="h-5 w-5 text-base-content/60" />
                     </button>
                   </div>
-                </h2>
-                <IngredientsTable mealData={mealData} />
+                </div>
+
+                {/* Table */}
+                <IngredientsTable
+                  mealData={mealData}
+                  activeIngRange={activeIngRange}
+                  unitSystem={unitSystem}
+                  factor={factor}
+                />
               </div>
             </div>
-
-            <section id="instructions-section">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-base-content">
-                  Preparation Steps
-                </h2>
-                <div className="flex items-center gap-2 p-1 border border-base-300 rounded-full bg-base-200">
-                  <button
-                    onClick={
-                      playerState === "playing" ? handlePause : handlePlay
-                    }
-                    className="btn btn-ghost btn-circle"
-                  >
-                    {playerState === "playing" ? (
-                      <PauseIcon className="h-6 w-6 text-info" />
-                    ) : (
-                      <PlayIcon className="h-6 w-6 text-success" />
-                    )}
-                  </button>
-                  <button
-                    onClick={handleRestart}
-                    className="btn btn-ghost btn-circle"
-                    disabled={playerState === "idle"}
-                  >
-                    <ArrowPathIcon className="h-5 w-5 text-base-content/60" />
-                  </button>
-                </div>
-              </div>
-
-              <ol className="list-decimal list-inside space-y-4 text-base-content leading-relaxed">
-                {instructionSentences.map((sentence, index) => (
-                  <li key={index}>
-                    <HighlightedSentence
-                      text={sentence}
-                      isActive={index === activeWordRange.sentenceIndex}
-                      wordRange={activeWordRange}
-                    />
-                  </li>
-                ))}
-              </ol>
-            </section>
           </div>
         </div>
       </div>
-      <Footer />
+
+      {/* Hide footer in print */}
+      <div className="bg-base-100 no-print">
+        <Footer />
+      </div>
     </>
   );
 }

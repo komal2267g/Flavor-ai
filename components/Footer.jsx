@@ -1,12 +1,12 @@
 "use client";
-
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from "react";
+import { FaGithub, FaLinkedin } from "react-icons/fa";
+import { FaXTwitter } from "react-icons/fa6"; // react-icons v4.10+
 
 const Footer = () => {
-    const [currentTheme, setCurrentTheme] = useState('light');
+  const [currentTheme, setCurrentTheme] = useState("light");
 
   useEffect(() => {
-    // Create a MutationObserver to watch for theme changes
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (
@@ -19,49 +19,64 @@ const Footer = () => {
         }
       });
     });
-
-    // Start observing
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["data-theme"],
     });
-
-    // Set initial theme
     const initialTheme =
       document.documentElement.getAttribute("data-theme") || "light";
     setCurrentTheme(initialTheme);
-
-    // Cleanup function
     return () => observer.disconnect();
   }, []);
 
+  const socialLinks = [
+    {
+      href: "https://x.com/itsAyushJ",
+      icon: FaXTwitter,
+      label: "X (Twitter)",
+      glow: "drop-shadow(0 0 8px #D99A30)",
+    },
+    {
+      href: "https://github.com/Ayushjhawar8",
+      icon: FaGithub,
+      label: "GitHub",
+      glow: "drop-shadow(0 0 8px #6E4B2A)",
+    },
+    {
+      href: "https://www.linkedin.com/in/",
+      icon: FaLinkedin,
+      label: "LinkedIn",
+      glow: "drop-shadow(0 0 8px #30B4DB)",
+    },
+  ];
+
+  const iconColor = currentTheme === "dark" ? "text-white" : "text-amber-800";
+  const iconBg = currentTheme === "dark" ? "bg-muted/50" : "bg-amber-200/30";
+  const iconHoverBg = currentTheme === "dark"
+    ? "hover:bg-muted"
+    : "hover:bg-amber-200/60";
+  const textColor = currentTheme === "dark" ? "text-white" : "text-amber-800";
+
   return (
-    <footer className="footer rounded-md p-10 bg-base-200 text-base-content footer-center">
+    <footer className="footer rounded-md p-10 bg-base-200 text-base-content footer-center mt-auto">
       <div className="flex flex-col md:flex-row justify-between items-center w-full max-w-4xl mx-auto space-y-4 md:space-y-0">
+        {/* Left: Title & Subtitle */}
         <div className="text-center md:text-left">
-          <h3
-            className={`card-title text-lg md:text-xl flex items-center ${
-              currentTheme === "dark" ? "text-white" : "text-amber-800"
-            }`}
-          >
+          <h3 className={`card-title text-lg md:text-xl flex items-center ${textColor}`}>
             Flavor AI
           </h3>
-          <p
-            className={`card-title text-lg md:text-xl flex items-center ${
-              currentTheme === "dark" ? "text-white" : "text-amber-800"
-            }`}
-          >
+          <p className={`card-title text-lg md:text-xl flex items-center ${textColor}`}>
             Your AI-powered culinary companion.
           </p>
         </div>
+
+        {/* Center: Author & Button */}
         <div className="flex flex-col items-center space-y-4">
           <a
             href="https://x.com/itsAyushJ"
             target="_blank"
             rel="noopener noreferrer"
-            className={`card-title text-lg md:text-xl flex items-center ${
-              currentTheme === "dark" ? "text-white" : "text-amber-800"
-            }`}
+            className={`card-title text-lg md:text-xl flex items-center ${textColor}`}
           >
             Ayush Jhawar
           </a>
@@ -71,27 +86,44 @@ const Footer = () => {
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-primary text-white px-4 py-1 rounded-full text-sm font-medium shadow-md flex items-center gap-2 hover:bg-primary-focus transition-colors"
+              style={{ background: "#6E4B2A" }}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className={`h-4 w-4 ${
-                  currentTheme === "dark" ? "text-white" : "text-amber-800"
-                }`}
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M12 0c-6.626 0-12 5.373-12 12c0 5.302 3.438 9.8 8.207 11.387c.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416c-.546-1.387-1.333-1.756-1.333-1.756c-1.089-.745.083-.729.083-.729c1.205.084 1.839 1.237 1.839 1.237c1.07 1.834 2.807 1.304 3.492.997c.107-.775.418-1.305.762-1.604c-2.665-.305-5.467-1.334-5.467-5.931c0-1.311.469-2.381 1.236-3.221c-.124-.303-.535-1.524.117-3.176c0 0 1.008-.322 3.301 1.30c.957-.266 1.983-.399 3.003-.404c1.02.005 2.047.138 3.006.404c2.291-1.552 3.297-1.30 3.297-1.30c.653 1.653.242 2.874.118 3.176c.77.84 1.235 1.911 1.235 3.221c0 4.609-2.807 5.624-5.479 5.921c.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576c4.765-1.589 8.199-6.086 8.199-11.386c0-6.627-5.373-12-12-12z" />
-              </svg>
               Contribute on GitHub
             </a>
           </div>
         </div>
-        <div className="text-sm text-center md:text-right">
-          <p
-            className={`card-title text-lg md:text-xl flex items-center ${
-              currentTheme === "dark" ? "text-white" : "text-amber-800"
-            }`}
+
+        {/* Right: Social & Email & Copyright */}
+        <div className="text-sm text-center md:text-center w-full md:w-auto">
+          <div className={`card-title text-lg md:text-xl flex items-center justify-center mb-2 ${textColor}`}>
+            Connect with Ayush
+          </div>
+          <div className="flex gap-4 text-xl mb-2 justify-end md:justify-center">
+            {socialLinks.map(({ href, icon: Icon, label, glow }) => (
+              <a
+                key={href}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${iconBg} ${iconHoverBg} ${iconColor} p-2 rounded-lg flex items-center justify-center transition duration-300`}
+                title={label}
+                aria-label={label}
+                style={{ filter: "none", transition: "box-shadow 0.3s, filter 0.3s" }}
+                onMouseEnter={e => (e.currentTarget.style.filter = glow)}
+                onMouseLeave={e => (e.currentTarget.style.filter = "none")}
+              >
+                <Icon />
+              </a>
+            ))}
+          </div>
+          <a
+            href="mailto:ayushjhawar499@gmail.com"
+            className={`text-sm font-medium md:text-center ${textColor} block mb-1`}
+            style={{ wordBreak: "break-all" }}
           >
+            ayushjhawar499@gmail.com
+          </a>
+          <p className={`card-title text-lg md:text-xl flex items-center ${textColor}`}>
             &copy; {new Date().getFullYear()} Flavor AI. All Rights Reserved.
           </p>
         </div>
