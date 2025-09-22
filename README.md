@@ -6,17 +6,26 @@
 
 
 
+
 # **Flavor AI**
 
 <img src="https://user-images.githubusercontent.com/74038190/212284100-561aa473-3905-4a80-b561-0d28506553ee.gif" width="100%">
 
 [![Open Source](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)](https://github.com/Ayushjhawar8/flavor-ai)
 
+
 **🔗 Live Demo:** 
 - [Live Demo](https://flavor-ai-gt92.onrender.com)  
 - [GitHub Repository](https://github.com/Ayushjhawar8/flavor-ai)
 
 
+<img src="https://user-images.githubusercontent.com/74038190/212284100-561aa473-3905-4a80-b561-0d28506553ee.gif" width="100%">
+
+>Welcome to FlavorAI, your AI-powered culinary companion! This project is designed to make meal planning and recipe exploration effortless and fun. Whether you're looking for AI-curated recipes, diverse food categories, or exciting culinary surprises, FlavorAI has it all.
+
+![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
+
+=======
 <img src="https://user-images.githubusercontent.com/74038190/212284100-561aa473-3905-4a80-b561-0d28506553ee.gif" width="100%">
 
 >Welcome to FlavorAI, your AI-powered culinary companion! This project is designed to make meal planning and recipe exploration effortless and fun. Whether you're looking for AI-curated recipes, diverse food categories, or exciting culinary surprises, FlavorAI has it all.
@@ -151,6 +160,8 @@ Here are some screenshots of the project in action:
 - **Styling**: Tailwind CSS, DaisyUI
 - **AI Integration**: OpenAI/Groq API
 - **Hosting**: Render
+
+![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
 
 ![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
 
@@ -294,6 +305,7 @@ This project is licensed under the MIT License - see the [`License`](https://git
 </tr>
 </table>
 
+
 <img src="https://user-images.githubusercontent.com/74038190/212284100-561aa473-3905-4a80-b561-0d28506553ee.gif" width="100%">
 
 **👨‍🏫 Mentors – Flavor-ai (GSSoC'25)**
@@ -307,6 +319,23 @@ This project is licensed under the MIT License - see the [`License`](https://git
 | Mentor 5    | Arnab Laha | [LahaArnab](https://github.com/LahaArnab) | [arnab-laha](https://www.linkedin.com/in/arnab-laha-4012b3287/) |
 
 <img src="https://user-images.githubusercontent.com/74038190/212284100-561aa473-3905-4a80-b561-0d28506553ee.gif" width="100%">
+
+
+
+<img src="https://user-images.githubusercontent.com/74038190/212284100-561aa473-3905-4a80-b561-0d28506553ee.gif" width="100%">
+
+**👨‍🏫 Mentors – Flavor-ai (GSSoC'25)**
+
+| Role          | Name               | GitHub Profile                                      | LinkedIn Profile                                                        |
+| ------------- | ------------------ | --------------------------------------------------- | ----------------------------------------------------------------------- |
+| Mentor 1   | Anshika Sansanwal  |  [anshikasansanwal](https://github.com/anshikasansanwal)  | [anshikasansanwal](https://www.linkedin.com/in/anshikasansanwal/) |
+| Mentor 2     | Zala Vishvarajsinh Krushnpalsinh |  [Zala0007](https://github.com/Zala0007)   | [vishvarajsinh-zala](https://www.linkedin.com/in/vishvarajsinh-zala-1299a7317/)     |
+| Mentor 3     | Krish Ahlawat  |  | [krishahlawat](https://www.linkedin.com/in/krishahlawat/)    |
+| Mentor 4     | Kanishka |  | [kanishka-tyagi](https://www.linkedin.com/in/kanishka-tyagi-a334b128b/) |
+| Mentor 5    | Arnab Laha | [LahaArnab](https://github.com/LahaArnab) | [arnab-laha](https://www.linkedin.com/in/arnab-laha-4012b3287/) |
+
+<img src="https://user-images.githubusercontent.com/74038190/212284100-561aa473-3905-4a80-b561-0d28506553ee.gif" width="100%">
+
 
 <h1 align="center"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Glowing%20Star.png" alt="Glowing Star" width="25" height="25" /> Give us a Star and let's make magic! <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Glowing%20Star.png" alt="Glowing Star" width="25" height="25" /></h1>
 
